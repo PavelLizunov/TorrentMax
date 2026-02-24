@@ -29,6 +29,8 @@ a = Analysis(
         'pyqtgraph.graphicsItems.ViewBox',
         'pyqtgraph.graphicsItems.PlotCurveItem',
         'numpy',
+        'packaging',
+        'packaging.version',
     ],
     hookspath=[],
     hooksconfig={},

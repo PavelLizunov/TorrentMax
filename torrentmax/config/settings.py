@@ -28,6 +28,10 @@ class AppSettings:
     start_minimized: bool = False
     minimize_to_tray: bool = True
 
+    # Updates
+    github_repo: str = "PavelLizunov/TorrentMax"
+    auto_check_updates: bool = True
+
     def __post_init__(self):
         if not self.download_path:
             self.download_path = os.path.join(os.path.expanduser('~'), 'Downloads')

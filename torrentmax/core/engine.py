@@ -6,6 +6,8 @@ import time
 import logging
 import libtorrent as lt
 
+from torrentmax.branding import AppBranding
+
 logger = logging.getLogger(__name__)
 
 # DHT bootstrap nodes — essential for finding peers via magnet links
@@ -19,7 +21,7 @@ DHT_BOOTSTRAP_NODES = [
 
 # Default session settings (libtorrent 2.0+ compatible)
 DEFAULT_SETTINGS = {
-    'user_agent': 'TorrentMax/1.0',
+    'user_agent': AppBranding.user_agent(),
     'alert_mask': lt.alert.category_t.all_categories,
     'enable_dht': True,
     'enable_lsd': True,

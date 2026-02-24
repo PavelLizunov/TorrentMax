@@ -4,6 +4,7 @@ import sys
 import os
 import logging
 
+from torrentmax.branding import AppBranding
 from torrentmax.config.settings import AppSettings
 from torrentmax.core.engine import TorrentEngine
 from torrentmax.core.tuner import AutoTuner
@@ -35,7 +36,7 @@ def main():
 
     setup_logging(settings.data_dir)
     logger = logging.getLogger(__name__)
-    logger.info("TorrentMax starting")
+    logger.info("TorrentMax v%s starting", AppBranding.VERSION)
 
     # IMPORTANT: Create libtorrent session BEFORE QApplication.
     # libtorrent initializes OpenSSL on its background threads, which conflicts

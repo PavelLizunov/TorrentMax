@@ -26,6 +26,7 @@ class SettingsDialog(QDialog):
         tabs.addTab(self._create_general_tab(), "General")
         tabs.addTab(self._create_speed_tab(), "Speed")
         tabs.addTab(self._create_network_tab(), "Network")
+        tabs.addTab(self._create_updates_tab(), "Updates")
         layout.addWidget(tabs)
 
         buttons = QDialogButtonBox(
@@ -99,6 +100,28 @@ class SettingsDialog(QDialog):
 
         return widget
 
+    def _create_updates_tab(self) -> QWidget:
+        widget = QWidget()
+        form = QFormLayout(widget)
+
+        # GitHub repo
+        self._repo_edit = QLineEdit(self._settings.github_repo)
+        self._repo_edit.setPlaceholderText("owner/repo (e.g., PavelLizunov/TorrentMax)")
+        form.addRow("GitHub repository:", self._repo_edit)
+
+        # Auto-check on startup
+        self._auto_update_check = QCheckBox("Check for updates on startup")
+        self._auto_update_check.setChecked(self._settings.auto_check_updates)
+        form.addRow(self._auto_update_check)
+
+        # Current version display
+        from torrentmax.branding import AppBranding
+        ver_label = QLabel(f"Current version: v{AppBranding.VERSION}")
+        ver_label.setStyleSheet("color: #71717A; font-size: 11px;")
+        form.addRow(ver_label)
+
+        return widget
+
     def _browse_path(self):
         path = QFileDialog.getExistingDirectory(self, "Select download directory")
         if path:
@@ -113,4 +136,6 @@ class SettingsDialog(QDialog):
         self._settings.auto_profile = self._auto_profile_check.isChecked()
         self._settings.minimize_to_tray = self._tray_check.isChecked()
         self._settings.start_minimized = self._start_min_check.isChecked()
+        self._settings.github_repo = self._repo_edit.text().strip()
+        self._settings.auto_check_updates = self._auto_update_check.isChecked()
         return self._settings

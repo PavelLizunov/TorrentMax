@@ -3,3 +3,4 @@ libtorrent-windows-dll>=0.0.3
 PyQt6>=6.6
 pyqtgraph>=0.14
 psutil>=5.9
+packaging>=21.0

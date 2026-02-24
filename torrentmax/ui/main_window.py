@@ -15,13 +15,17 @@ from PyQt6.QtWidgets import (
 
 import libtorrent as lt
 
+from torrentmax.branding import AppBranding
 from torrentmax.core.engine import TorrentEngine
 from torrentmax.core.torrent import TorrentStatus, TorrentState, format_size, format_speed, format_eta
 from torrentmax.core.tuner import AutoTuner
+from torrentmax.core.models import UpdateInfo
+from torrentmax.core.update_checker import UpdateChecker, get_update_worker_class
 from torrentmax.config.settings import AppSettings
 from torrentmax.network.detector import NetworkDetector, VpnDetector
 from torrentmax.ui.add_torrent import AddTorrentDialog
 from torrentmax.ui.monitor import MonitorWidget
+from torrentmax.ui.update_panel import UpdatePanel
 from torrentmax.ui.settings_dialog import SettingsDialog
 
 logger = logging.getLogger(__name__)
@@ -52,6 +56,11 @@ class MainWindow(QMainWindow):
         self._force_quit = False
         self._shutting_down = False  # Prevents timer callbacks during shutdown
 
+        # Update system state
+        self._update_checker: UpdateChecker | None = None
+        self._update_worker = None  # UpdateWorker (lazy class)
+        self._pending_update: UpdateInfo | None = None
+
         # Warm up psutil.cpu_percent (first call always returns 0.0)
         psutil.cpu_percent(interval=None)
 
@@ -59,8 +68,12 @@ class MainWindow(QMainWindow):
         self._setup_tray()
         self._setup_timers()
 
+        # Fire-and-forget update check (silent on failure)
+        # Maps to VPNRouter MainForm constructor: _ = CheckForUpdateAsync();
+        self._start_update_check()
+
     def _setup_ui(self):
-        self.setWindowTitle('TorrentMax  v1.0.0')
+        self.setWindowTitle(AppBranding.window_title())
         self.setMinimumSize(900, 600)
         self.resize(1100, 700)
 
@@ -73,6 +86,11 @@ class MainWindow(QMainWindow):
         # Brand header
         header = self._create_brand_header()
         layout.addWidget(header)
+
+        # Update panel — amber notification bar (hidden until update found)
+        self._update_panel = UpdatePanel()
+        self._update_panel.update_requested.connect(self._on_update_requested)
+        layout.addWidget(self._update_panel)
 
         # Toolbar
         self._toolbar = self._create_toolbar()
@@ -130,7 +148,7 @@ class MainWindow(QMainWindow):
         h_layout.addWidget(name_label)
 
         # Version
-        ver_label = QLabel("v1.0.0")
+        ver_label = QLabel(f"v{AppBranding.VERSION}")
         ver_label.setStyleSheet(
             "font-size: 12px; color: #71717A; margin-left: 8px; background: transparent; border: none;"
         )
@@ -249,7 +267,7 @@ class MainWindow(QMainWindow):
         tray_menu.addAction("Quit", self._force_quit_app)
         self._tray.setContextMenu(tray_menu)
         self._tray.activated.connect(self._on_tray_activated)
-        self._tray.setToolTip("TorrentMax v1.0.0")
+        self._tray.setToolTip(AppBranding.tray_tooltip())
         self._tray.show()
 
     def _setup_timers(self):
@@ -495,6 +513,127 @@ class MainWindow(QMainWindow):
             'download_rate_limit': self._settings.max_download_rate,
             'upload_rate_limit': self._settings.max_upload_rate,
         })
+
+    # --- Auto-Update (maps to VPNRouter MainForm update flow) ---
+
+    def _start_update_check(self):
+        """Fire-and-forget background update check. Silent on failure.
+
+        Maps to VPNRouter MainForm.CheckForUpdateAsync() lines 73-92.
+        """
+        if not self._settings.github_repo or not self._settings.auto_check_updates:
+            return
+
+        try:
+            self._update_checker = UpdateChecker(
+                self._settings.github_repo,
+                AppBranding.VERSION,
+            )
+            # Clean up staging dir + .bak files from previous update
+            self._update_checker.cleanup_staging_dir()
+
+            UpdateWorker = get_update_worker_class()
+            self._update_worker = UpdateWorker(self._update_checker, parent=self)
+            self._update_worker.update_available.connect(self._on_update_available)
+            self._update_worker.check_failed.connect(
+                lambda msg: logger.warning("Update check failed: %s", msg)
+            )
+            self._update_worker.check()
+        except Exception as e:
+            logger.warning("Failed to start update check: %s", e)
+
+    def _on_update_available(self, info: UpdateInfo):
+        """Show update notification panel.
+
+        Maps to VPNRouter MainForm.ShowUpdateNotification().
+        """
+        self._pending_update = info
+        self._update_panel.show_update(info)
+        logger.info("Update available: v%s → v%s", info.current_version, info.latest_version)
+
+    def _on_update_requested(self):
+        """User clicked Update button — confirm and start download.
+
+        Maps to VPNRouter MainForm.OnUpdateClick() lines 1168-1241.
+        """
+        if self._pending_update is None or self._update_checker is None:
+            return
+
+        info = self._pending_update
+
+        # Build confirmation message with changelog
+        msg = f"Update to v{info.latest_version}?\n"
+        if info.release_notes:
+            notes = info.release_notes[:800]
+            if len(info.release_notes) > 800:
+                notes += "\n..."
+            msg += f"\n--- Changelog ---\n{notes}\n-----------------\n"
+        msg += "\nThe application will restart automatically."
+
+        reply = QMessageBox.question(
+            self, "Update TorrentMax", msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # Start download — keep torrent engine running during download
+        # (VPNRouter keeps VPN on during download in case GitHub needs it)
+        self._update_panel.set_status("Downloading update...")
+
+        UpdateWorker = get_update_worker_class()
+        self._update_worker = UpdateWorker(self._update_checker, parent=self)
+        self._update_worker.download_progress.connect(self._update_panel.set_progress)
+        self._update_worker.status_changed.connect(self._update_panel.set_status)
+        self._update_worker.download_finished.connect(self._on_download_finished)
+        self._update_worker.download_failed.connect(self._on_download_failed)
+        self._update_worker.download(info)
+
+    def _on_download_finished(self, extracted_dir: str):
+        """Download complete — stop engine, apply update, relaunch.
+
+        Maps to VPNRouter lines 1210-1228.
+        """
+        self._update_panel.set_status("Applying update...")
+
+        # Stop torrent engine (like VPNRouter stops VPN before applying)
+        try:
+            self._stop_timers()
+            self._settings.save()
+            self._engine.save_torrent_list(self._settings.data_dir)
+            self._engine.stop(self._settings.data_dir)
+        except Exception as e:
+            logger.error("Error stopping engine before update: %s", e)
+
+        # Apply update (copies files, renames locked ones, launches new exe)
+        try:
+            self._update_checker.apply_update(extracted_dir)
+            # New process launched — exit this one
+            self._tray.hide()
+            QApplication.quit()
+        except Exception as e:
+            logger.error("Update apply failed: %s", e)
+            QMessageBox.critical(
+                self, "Update Failed",
+                f"Failed to apply update:\n{e}"
+            )
+            self._update_panel.set_status(
+                f"Update available: v{self._pending_update.latest_version}"
+            )
+            self._update_panel.reset()
+
+    def _on_download_failed(self, error_msg: str):
+        """Download or staging failed."""
+        logger.error("Update download failed: %s", error_msg)
+        QMessageBox.warning(
+            self, "Update Failed",
+            f"Download failed:\n{error_msg}"
+        )
+        if self._pending_update:
+            self._update_panel.set_status(
+                f"Update available: v{self._pending_update.latest_version}"
+            )
+        self._update_panel.reset()
 
     # --- Helpers ---
 
