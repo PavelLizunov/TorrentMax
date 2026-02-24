@@ -12,19 +12,25 @@ class AddTorrentDialog(QDialog):
 
     def __init__(self, parent=None, default_save_path: str = ""):
         super().__init__(parent)
-        self.setWindowTitle("Add Magnet Link")
+        self.setWindowTitle("\U0001F517 Add Magnet Link")
         self.setMinimumWidth(500)
 
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
 
         # Magnet link input
-        layout.addWidget(QLabel("Magnet link:"))
+        mag_label = QLabel("Magnet link:")
+        mag_label.setStyleSheet("font-weight: bold; color: #3B82F6;")
+        layout.addWidget(mag_label)
         self._magnet_edit = QLineEdit()
         self._magnet_edit.setPlaceholderText("magnet:?xt=urn:btih:...")
         layout.addWidget(self._magnet_edit)
 
         # Save path
-        layout.addWidget(QLabel("Save to:"))
+        save_label = QLabel("Save to:")
+        save_label.setStyleSheet("font-weight: bold; color: #3B82F6;")
+        layout.addWidget(save_label)
         path_layout = QHBoxLayout()
         self._path_edit = QLineEdit(default_save_path)
         path_layout.addWidget(self._path_edit)
@@ -32,6 +38,8 @@ class AddTorrentDialog(QDialog):
         browse_btn.clicked.connect(self._browse)
         path_layout.addWidget(browse_btn)
         layout.addLayout(path_layout)
+
+        layout.addSpacing(8)
 
         # Buttons
         buttons = QDialogButtonBox(

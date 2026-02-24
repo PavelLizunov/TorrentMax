@@ -14,11 +14,13 @@ class SettingsDialog(QDialog):
 
     def __init__(self, parent=None, settings: AppSettings = None):
         super().__init__(parent)
-        self.setWindowTitle("Settings")
-        self.setMinimumWidth(450)
+        self.setWindowTitle("\u2699 TorrentMax Settings")
+        self.setMinimumWidth(480)
         self._settings = settings or AppSettings()
 
         layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
 
         tabs = QTabWidget()
         tabs.addTab(self._create_general_tab(), "General")

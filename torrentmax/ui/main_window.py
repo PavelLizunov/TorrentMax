@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
         self._setup_timers()
 
     def _setup_ui(self):
-        self.setWindowTitle('TorrentMax')
+        self.setWindowTitle('TorrentMax  v1.0.0')
         self.setMinimumSize(900, 600)
         self.resize(1100, 700)
 
@@ -68,17 +68,26 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Brand header
+        header = self._create_brand_header()
+        layout.addWidget(header)
 
         # Toolbar
         self._toolbar = self._create_toolbar()
         self.addToolBar(self._toolbar)
 
-        # Info bar
+        # Info bar (with padding)
+        info_container = QWidget()
+        info_container.setContentsMargins(8, 6, 8, 2)
+        info_inner = QVBoxLayout(info_container)
+        info_inner.setContentsMargins(8, 6, 8, 2)
         info_bar = self._create_info_bar()
-        layout.addLayout(info_bar)
+        info_inner.addLayout(info_bar)
+        layout.addWidget(info_container)
 
-        # Splitter: torrent table + monitor
+        # Splitter: torrent table + monitor (with padding)
         splitter = QSplitter(Qt.Orientation.Vertical)
 
         # Torrent table
@@ -90,6 +99,7 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self._monitor)
 
         splitter.setSizes([400, 200])
+        splitter.setContentsMargins(8, 4, 8, 4)
         layout.addWidget(splitter)
 
         # Status bar
@@ -102,46 +112,81 @@ class MainWindow(QMainWindow):
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._show_context_menu)
 
+    def _create_brand_header(self) -> QWidget:
+        """VPNRouter-style branded header panel."""
+        header = QWidget()
+        header.setFixedHeight(56)
+        header.setStyleSheet(
+            "QWidget { background-color: #27272A; border-bottom: 1px solid #3F3F46; }"
+        )
+        h_layout = QHBoxLayout(header)
+        h_layout.setContentsMargins(16, 8, 16, 8)
+
+        # App name in brand blue
+        name_label = QLabel("TorrentMax")
+        name_label.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3B82F6; background: transparent; border: none;"
+        )
+        h_layout.addWidget(name_label)
+
+        # Version
+        ver_label = QLabel("v1.0.0")
+        ver_label.setStyleSheet(
+            "font-size: 12px; color: #71717A; margin-left: 8px; background: transparent; border: none;"
+        )
+        h_layout.addWidget(ver_label)
+
+        h_layout.addStretch()
+
+        # Publisher tag
+        pub_label = QLabel("by NiniTux")
+        pub_label.setStyleSheet(
+            "font-size: 11px; color: #52525B; font-style: italic; background: transparent; border: none;"
+        )
+        h_layout.addWidget(pub_label)
+
+        return header
+
     def _create_toolbar(self) -> QToolBar:
         toolbar = QToolBar("Main")
         toolbar.setMovable(False)
         toolbar.setIconSize(toolbar.iconSize())
 
-        self._act_add = QAction("Add Torrent", self)
+        self._act_add = QAction("\u2795 Torrent", self)
         self._act_add.setShortcut("Ctrl+O")
         self._act_add.triggered.connect(self._on_add_torrent)
         toolbar.addAction(self._act_add)
 
-        self._act_add_magnet = QAction("Add Magnet", self)
+        self._act_add_magnet = QAction("\U0001F517 Magnet", self)
         self._act_add_magnet.setShortcut("Ctrl+M")
         self._act_add_magnet.triggered.connect(self._on_add_magnet)
         toolbar.addAction(self._act_add_magnet)
 
         toolbar.addSeparator()
 
-        self._act_resume = QAction("Resume", self)
+        self._act_resume = QAction("\u25B6 Resume", self)
         self._act_resume.triggered.connect(self._on_resume)
         toolbar.addAction(self._act_resume)
 
-        self._act_pause = QAction("Pause", self)
+        self._act_pause = QAction("\u23F8 Pause", self)
         self._act_pause.triggered.connect(self._on_pause)
         toolbar.addAction(self._act_pause)
 
-        self._act_remove = QAction("Remove", self)
+        self._act_remove = QAction("\u2716 Remove", self)
         self._act_remove.setShortcut("Delete")
         self._act_remove.triggered.connect(self._on_remove)
         toolbar.addAction(self._act_remove)
 
         toolbar.addSeparator()
 
-        self._act_settings = QAction("Settings", self)
+        self._act_settings = QAction("\u2699 Settings", self)
         self._act_settings.setShortcut("Ctrl+,")
         self._act_settings.triggered.connect(self._on_settings)
         toolbar.addAction(self._act_settings)
 
         toolbar.addSeparator()
 
-        self._act_quit = QAction("Quit", self)
+        self._act_quit = QAction("\u2B1B Quit", self)
         self._act_quit.setShortcut("Ctrl+Q")
         self._act_quit.triggered.connect(self._force_quit_app)
         toolbar.addAction(self._act_quit)
@@ -169,13 +214,13 @@ class MainWindow(QMainWindow):
 
         layout.addStretch()
 
-        # Global speed labels
-        self._global_down_label = QLabel("D: 0 B/s")
-        self._global_down_label.setStyleSheet("font-weight: bold; color: #2196F3;")
+        # Global speed labels — VPN brand colors
+        self._global_down_label = QLabel("\u25BC 0 B/s")
+        self._global_down_label.setStyleSheet("font-weight: bold; color: #3B82F6; font-size: 12px;")
         layout.addWidget(self._global_down_label)
 
-        self._global_up_label = QLabel("U: 0 B/s")
-        self._global_up_label.setStyleSheet("font-weight: bold; color: #4CAF50;")
+        self._global_up_label = QLabel("\u25B2 0 B/s")
+        self._global_up_label.setStyleSheet("font-weight: bold; color: #22C55E; font-size: 12px;")
         layout.addWidget(self._global_up_label)
 
         return layout
@@ -204,7 +249,7 @@ class MainWindow(QMainWindow):
         tray_menu.addAction("Quit", self._force_quit_app)
         self._tray.setContextMenu(tray_menu)
         self._tray.activated.connect(self._on_tray_activated)
-        self._tray.setToolTip("TorrentMax")
+        self._tray.setToolTip("TorrentMax v1.0.0")
         self._tray.show()
 
     def _setup_timers(self):
@@ -333,8 +378,8 @@ class MainWindow(QMainWindow):
         session_stats = self._engine.get_session_stats()
 
         # Update global speed
-        self._global_down_label.setText(f"D: {format_speed(session_stats.get('download_rate', 0))}")
-        self._global_up_label.setText(f"U: {format_speed(session_stats.get('upload_rate', 0))}")
+        self._global_down_label.setText(f"\u25BC {format_speed(session_stats.get('download_rate', 0))}")
+        self._global_up_label.setText(f"\u25B2 {format_speed(session_stats.get('upload_rate', 0))}")
 
         # Build status list — catch errors from invalid handles
         statuses: list[TorrentStatus] = []

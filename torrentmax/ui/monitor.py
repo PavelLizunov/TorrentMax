@@ -31,77 +31,86 @@ class MonitorWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
 
-        # Title
-        title = QLabel("MONITOR")
-        title.setStyleSheet("font-weight: bold; font-size: 11px;")
+        # Title — brand style
+        title = QLabel("\u25CF MONITOR")
+        title.setStyleSheet(
+            "font-weight: bold; font-size: 11px; color: #A1A1AA; "
+            "letter-spacing: 2px;"
+        )
         layout.addWidget(title)
 
         # Graphs row
         graphs_layout = QHBoxLayout()
 
-        # Speed graph
+        # Speed graph — VPN brand blue/green
         self._speed_plot = pg.PlotWidget(title="Speed")
-        self._speed_plot.setBackground('#1e1e1e')
-        self._speed_plot.showGrid(x=False, y=True, alpha=0.3)
+        self._speed_plot.setBackground('#18181B')
+        self._speed_plot.showGrid(x=False, y=True, alpha=0.2)
         self._speed_plot.setYRange(0, 1024 * 1024)  # Initial 1 MB/s
         self._speed_plot.setMouseEnabled(x=False, y=False)
         self._speed_plot.hideAxis('bottom')
         self._speed_plot.setMaximumHeight(150)
+        self._speed_plot.getAxis('left').setPen(pg.mkPen('#3F3F46'))
+        self._speed_plot.getAxis('left').setTextPen(pg.mkPen('#71717A'))
 
-        self._dl_curve = self._speed_plot.plot(pen=pg.mkPen('#2196F3', width=2))
-        self._ul_curve = self._speed_plot.plot(pen=pg.mkPen('#4CAF50', width=2))
+        self._dl_curve = self._speed_plot.plot(pen=pg.mkPen('#3B82F6', width=2))
+        self._ul_curve = self._speed_plot.plot(pen=pg.mkPen('#22C55E', width=2))
         graphs_layout.addWidget(self._speed_plot)
 
-        # System graph (disk + CPU)
+        # System graph (disk + CPU) — brand amber/red
         self._sys_plot = pg.PlotWidget(title="System")
-        self._sys_plot.setBackground('#1e1e1e')
-        self._sys_plot.showGrid(x=False, y=True, alpha=0.3)
+        self._sys_plot.setBackground('#18181B')
+        self._sys_plot.showGrid(x=False, y=True, alpha=0.2)
         self._sys_plot.setYRange(0, 100)
         self._sys_plot.setMouseEnabled(x=False, y=False)
         self._sys_plot.hideAxis('bottom')
         self._sys_plot.setMaximumHeight(150)
+        self._sys_plot.getAxis('left').setPen(pg.mkPen('#3F3F46'))
+        self._sys_plot.getAxis('left').setTextPen(pg.mkPen('#71717A'))
 
-        self._disk_curve = self._sys_plot.plot(pen=pg.mkPen('#FF9800', width=2))
-        self._cpu_curve = self._sys_plot.plot(pen=pg.mkPen('#F44336', width=2))
+        self._disk_curve = self._sys_plot.plot(pen=pg.mkPen('#F59E0B', width=2))
+        self._cpu_curve = self._sys_plot.plot(pen=pg.mkPen('#EF4444', width=2))
         graphs_layout.addWidget(self._sys_plot)
 
         layout.addLayout(graphs_layout)
 
-        # Stats labels row
+        # Stats labels row — brand colors
         stats_layout = QHBoxLayout()
 
-        self._dl_label = QLabel("Download: 0 B/s")
-        self._dl_label.setStyleSheet("color: #2196F3;")
+        self._dl_label = QLabel("\u25BC Download: 0 B/s")
+        self._dl_label.setStyleSheet("color: #3B82F6; font-weight: bold;")
         stats_layout.addWidget(self._dl_label)
 
-        self._ul_label = QLabel("Upload: 0 B/s")
-        self._ul_label.setStyleSheet("color: #4CAF50;")
+        self._ul_label = QLabel("\u25B2 Upload: 0 B/s")
+        self._ul_label.setStyleSheet("color: #22C55E; font-weight: bold;")
         stats_layout.addWidget(self._ul_label)
 
-        self._disk_label = QLabel("Disk: 0%")
-        self._disk_label.setStyleSheet("color: #FF9800;")
+        self._disk_label = QLabel("\u25CF Disk: 0%")
+        self._disk_label.setStyleSheet("color: #F59E0B;")
         stats_layout.addWidget(self._disk_label)
 
-        self._cpu_label = QLabel("CPU: 0%")
-        self._cpu_label.setStyleSheet("color: #F44336;")
+        self._cpu_label = QLabel("\u25CF CPU: 0%")
+        self._cpu_label.setStyleSheet("color: #EF4444;")
         stats_layout.addWidget(self._cpu_label)
 
-        self._peers_label = QLabel("Peers: 0")
+        self._peers_label = QLabel("\u25CF Peers: 0")
+        self._peers_label.setStyleSheet("color: #A1A1AA;")
         stats_layout.addWidget(self._peers_label)
 
         stats_layout.addStretch()
         layout.addLayout(stats_layout)
 
-        # Bottleneck display
+        # Bottleneck display — brand card style
         self._bottleneck_frame = QFrame()
         self._bottleneck_frame.setStyleSheet(
-            "QFrame { background-color: #2d2d2d; border-radius: 4px; padding: 4px; }"
+            "QFrame { background-color: #27272A; border: 1px solid #3F3F46; "
+            "border-radius: 6px; padding: 4px; }"
         )
         bn_layout = QVBoxLayout(self._bottleneck_frame)
-        bn_layout.setContentsMargins(8, 4, 8, 4)
-        self._bottleneck_label = QLabel("No bottlenecks detected")
+        bn_layout.setContentsMargins(10, 6, 10, 6)
+        self._bottleneck_label = QLabel("\u2713 No bottlenecks detected")
         self._bottleneck_label.setWordWrap(True)
-        self._bottleneck_label.setStyleSheet("font-size: 11px;")
+        self._bottleneck_label.setStyleSheet("font-size: 11px; color: #22C55E; border: none;")
         bn_layout.addWidget(self._bottleneck_label)
         layout.addWidget(self._bottleneck_frame)
 
@@ -123,26 +132,28 @@ class MonitorWidget(QWidget):
         max_speed = max(max(self._dl_history), max(self._ul_history), 1024)
         self._speed_plot.setYRange(0, max_speed * 1.1)
 
-        # Update labels
-        self._dl_label.setText(f"Download: {format_speed(download_rate)}")
-        self._ul_label.setText(f"Upload: {format_speed(upload_rate)}")
-        self._disk_label.setText(f"Disk: {disk_pct:.0f}%")
-        self._cpu_label.setText(f"CPU: {cpu_pct:.0f}%")
-        self._peers_label.setText(f"Peers: {num_peers}")
+        # Update labels — brand style with icons
+        self._dl_label.setText(f"\u25BC Download: {format_speed(download_rate)}")
+        self._ul_label.setText(f"\u25B2 Upload: {format_speed(upload_rate)}")
+        self._disk_label.setText(f"\u25CF Disk: {disk_pct:.0f}%")
+        self._cpu_label.setText(f"\u25CF CPU: {cpu_pct:.0f}%")
+        self._peers_label.setText(f"\u25CF Peers: {num_peers}")
 
-        # Color warnings: red > 90%, orange > 70%, normal otherwise
-        disk_color = '#F44336' if disk_pct > 90 else '#FF9800' if disk_pct > 70 else '#888888'
+        # Color warnings: brand colors (red > 90%, amber > 70%, zinc otherwise)
+        disk_color = '#EF4444' if disk_pct > 90 else '#F59E0B' if disk_pct > 70 else '#71717A'
         self._disk_label.setStyleSheet(f"color: {disk_color};")
 
-        cpu_color = '#F44336' if cpu_pct > 85 else '#FF9800' if cpu_pct > 60 else '#888888'
+        cpu_color = '#EF4444' if cpu_pct > 85 else '#F59E0B' if cpu_pct > 60 else '#71717A'
         self._cpu_label.setStyleSheet(f"color: {cpu_color};")
 
     def update_bottlenecks(self, bottlenecks: list[Bottleneck]):
-        """Update the bottleneck display."""
+        """Update the bottleneck display — VPN brand styling."""
         if not bottlenecks:
-            self._bottleneck_label.setText("No bottlenecks detected")
+            self._bottleneck_label.setText("\u2713 No bottlenecks detected")
+            self._bottleneck_label.setStyleSheet("font-size: 11px; color: #22C55E; border: none;")
             self._bottleneck_frame.setStyleSheet(
-                "QFrame { background-color: #1b3a1b; border-radius: 4px; padding: 4px; }"
+                "QFrame { background-color: #14532D; border: 1px solid #166534; "
+                "border-radius: 6px; padding: 4px; }"
             )
             return
 
@@ -150,16 +161,22 @@ class MonitorWidget(QWidget):
         worst = max(bottlenecks, key=lambda b: b.severity)
         lines = []
         for bn in bottlenecks:
-            icon = "!!" if bn.severity > 0.7 else "!"
-            lines.append(f"{icon} {bn.message} — {bn.suggestion}")
+            icon = "\u26A0" if bn.severity > 0.7 else "\u25CF"
+            lines.append(f"{icon} {bn.message} \u2014 {bn.suggestion}")
 
         self._bottleneck_label.setText("\n".join(lines))
 
         if worst.severity > 0.7:
+            # Danger — brand red
+            self._bottleneck_label.setStyleSheet("font-size: 11px; color: #FCA5A5; border: none;")
             self._bottleneck_frame.setStyleSheet(
-                "QFrame { background-color: #3a1b1b; border-radius: 4px; padding: 4px; }"
+                "QFrame { background-color: #7F1D1D; border: 1px solid #991B1B; "
+                "border-radius: 6px; padding: 4px; }"
             )
         else:
+            # Warning — brand amber
+            self._bottleneck_label.setStyleSheet("font-size: 11px; color: #FDE68A; border: none;")
             self._bottleneck_frame.setStyleSheet(
-                "QFrame { background-color: #3a3a1b; border-radius: 4px; padding: 4px; }"
+                "QFrame { background-color: #451A03; border: 1px solid #92400E; "
+                "border-radius: 6px; padding: 4px; }"
             )
